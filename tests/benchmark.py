@@ -1,8 +1,9 @@
 import time
 import random
 import string
+import contextlib
 
-from autocomplete.autocomplete import Autocomplete
+from autocomplete.autocomplete import Autocomplete, AutocompleteWithList
 
 
 def get_random_words(no_of_words, word_length=None):
@@ -15,14 +16,29 @@ def get_random_words(no_of_words, word_length=None):
 
 def benchmark():
     for no_of_words in [1000, 10000, 100000, 1000000]:
-        start_time = time.perf_counter()
-        ac = Autocomplete(get_random_words(no_of_words))
-        elapsed_time = time.perf_counter() - start_time
-        print(f"** Creating Autocomplete instance for {no_of_words} words took {elapsed_time} secs")
+        with time_and_log(f"* Creating {no_of_words} random words took"):
+            words = get_random_words(no_of_words)
+        with time_and_log(f"** Creating Autocomplete instance for {no_of_words} words took"):
+            ac = Autocomplete(words)
         for prefix_len in range(1, 10):
             prefix = ''.join(random.choice(string.ascii_lowercase) for _ in range(prefix_len))
-            elapsed_time = time_fn(ac.get, prefix=prefix)
-            print(f"Autocomplete {prefix} for {no_of_words} words took {elapsed_time} seconds")
+            with time_and_log(f"Autocomplete {prefix} for {no_of_words} words took"):
+                ac.get(prefix)
+
+        with time_and_log(f"** Creating AutocompleteWithList instance for {no_of_words} words took"):
+            ac = AutocompleteWithList(words)
+        for prefix_len in range(1, 10):
+            prefix = ''.join(random.choice(string.ascii_lowercase) for _ in range(prefix_len))
+            with time_and_log(f"AutocompleteWithList {prefix} for {no_of_words} words took"):
+                ac.get(prefix)
+
+
+@contextlib.contextmanager
+def time_and_log(msg):
+    start_time = time.perf_counter()
+    yield
+    elapsed_time = time.perf_counter() - start_time
+    print(f"{msg} took {elapsed_time} seconds")
 
 
 def time_fn(fn, repeats=3, **kwargs):
@@ -35,7 +51,18 @@ def time_fn(fn, repeats=3, **kwargs):
     return min(elapsed_times)
 
 
+def sanity_check():
+    words = get_random_words(100000)
+    ac = Autocomplete(words)
+
+    for _ in range(20):
+        prefix = ''.join(random.choice(string.ascii_lowercase) for _ in range(random.randint(1, 10)))
+        completions = ac.get(prefix)
+
+        print(f"Autocomplete for {prefix} with 10000 randon words returned:\n{completions}")
+
 if __name__ == '__main__':
+    #sanity_check()
     benchmark()
 
 
